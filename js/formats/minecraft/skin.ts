@@ -715,6 +715,15 @@ BARS.defineActions(function() {
 		category: 'file',
 		condition: () => Format == format && !!Texture.all[0],
 		click: function () {
+			if (Blockbench.queries?.embed) {
+				let texture = Texture.all[0];
+				window.parent.postMessage({
+					type: 'axolotl-skin-export',
+					name: texture.name.endsWith('.png') ? texture.name : `${texture.name}.png`,
+					dataUrl: texture.getDataURL(),
+				}, '*');
+				return;
+			}
 			Texture.all[0].save(true);
 		}
 	})
