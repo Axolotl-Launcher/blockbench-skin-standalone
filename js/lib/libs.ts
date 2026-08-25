@@ -1,4 +1,3 @@
-import * as GIFEnc from 'gifenc'
 import $ from 'jquery'
 import * as threejs from "three"
 import * as FIK from './fik'
@@ -6,11 +5,9 @@ import Vue from 'vue/dist/vue.js'
 import JSZip from 'jszip'
 import Prism from 'prismjs'
 import 'prismjs/components/prism-json'
-import GIF from './gif'
 import vSortable from 'vue-sortable'
 import Sortable from 'sortablejs'
 import {marked} from 'marked'
-import { APNGencoder } from './canvas2apng'
 import DOMPurify from 'dompurify'
 
 Vue.use(vSortable)
@@ -23,30 +20,25 @@ Vue.directive('sortable', {
 const THREE = Object.assign({}, threejs);
 
 export {
-    GIFEnc,
-    GIF,
-    THREE,
+	THREE,
     $,
     $ as jQuery,
-    FIK,
-    Vue,
-    JSZip,
-    Prism,
-    marked,
-    APNGencoder,
-    DOMPurify,
+	FIK,
+	Vue,
+	JSZip,
+	Prism,
+	marked,
+	DOMPurify,
 }
 const global = {
-    GIFEnc,
-    THREE,
+	THREE,
     jQuery: $,
     $,
-    FIK,
-    Vue,
-    JSZip,
-    Prism,
-    marked,
-    APNGencoder,
-    DOMPurify,
+	FIK,
+	Vue,
+	JSZip,
+	Prism,
+	marked,
+	DOMPurify,
 }
 Object.assign(window, global);

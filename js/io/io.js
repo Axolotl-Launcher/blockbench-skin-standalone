@@ -742,7 +742,7 @@ BARS.defineActions(function() {
 			Blockbench.dispatchEvent('quick_save_model', {});
 		}
 	})
-	if (!isApp) {
+	if (!isApp && !Blockbench.queries?.embed) {
 		new Action('export_asset_archive', {
 			icon: 'archive',
 			category: 'file',

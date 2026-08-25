@@ -16,6 +16,7 @@ const options = commandLineArgs([
     {name: 'host', type: String},
     {name: 'port', type: Number},
     {name: 'analyze', type: Boolean},
+    {name: 'skin', type: Boolean},
 ])
 
 function conditionalImportPlugin(name, config) {
@@ -71,7 +72,7 @@ const minify = !dev_mode;
  * @type {esbuild.BuildOptions} BuildOptions
  */
 const config = {
-    entryPoints: ['./js/main.js'],
+    entryPoints: [options.skin ? './js/main.skin.ts' : './js/main.js'],
     define: {
         isApp: isApp.toString(),
         appVersion: `"${pkg.version}"`,
@@ -81,7 +82,7 @@ const config = {
     format: 'esm',
     bundle: true,
     minify,
-    outfile: './dist/bundle.js',
+    outfile: options.skin ? './dist/skin.bundle.js' : './dist/bundle.js',
     mainFields: ['module', 'main'],
     logLevel: 'info',
     logOverride: {

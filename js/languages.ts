@@ -84,6 +84,15 @@ export const translateUI = function() {
 	})
 }
 
+export function setLanguage(code: string): boolean {
+	if (!Language.options[code]) return false
+	Language.code = code
+	Language.data = data[code]
+	document.body.parentElement.setAttribute('lang', code)
+	translateUI()
+	return true
+}
+
 export const Language = {
 	/**
 	 * Translation data for the current language
@@ -133,8 +142,12 @@ export const Language = {
 
 // Get language code
 let code;
+const requested_language = window.BlockbenchEmbedLanguage || new URLSearchParams(location.search).get('lang');
+if (requested_language && Language.options[requested_language]) {
+	code = requested_language;
+}
 try {
-	code = JSON.parse(localStorage.getItem('settings')).language.value
+	if (!code) code = JSON.parse(localStorage.getItem('settings')).language.value
 } catch (err) {}
 
 if (!code) {
@@ -150,10 +163,12 @@ Language.data = data[Language.code];
 
 const global = {
 	tl,
-	Language
+	Language,
+	setLanguage
 };
 declare global {
 	const Language: typeof global.Language
 	const tl: typeof global.tl
+	const setLanguage: typeof global.setLanguage
 }
 Object.assign(window, global);

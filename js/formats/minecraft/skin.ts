@@ -464,7 +464,7 @@ export const skin_dialog = new Dialog({
 			type: 'select',
 			options: {
 				template: 'dialog.skin.texture_source.template',
-				load_texture: navigator.onLine ? 'dialog.skin.texture_source.load_texture' : undefined,
+				load_texture: navigator.onLine && !Blockbench.queries?.embed ? 'dialog.skin.texture_source.load_texture' : undefined,
 				upload_texture: 'dialog.skin.texture_file',
 			}
 		},

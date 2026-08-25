@@ -585,7 +585,8 @@ export function updateKeybindConflicts() {
 }
 
 function isSwapToolsEnabled(event) {
-	let keybind = BarItems.swap_tools.sub_keybinds.hold.keybind;
+	let keybind = BarItems.swap_tools?.sub_keybinds?.hold?.keybind;
+	if (!keybind) return false;
 	if (keybind.key == 18 || keybind.alt) {
 		return event ? event.altKey : Pressing.alt;
 	} else if (keybind.key == 17 || keybind.ctrl) {
@@ -595,7 +596,8 @@ function isSwapToolsEnabled(event) {
 	}
 }
 function isSwapToolsHoldKey(key) {
-	let keybind = BarItems.swap_tools.sub_keybinds.hold.keybind;
+	let keybind = BarItems.swap_tools?.sub_keybinds?.hold?.keybind;
+	if (!keybind) return false;
 	if (key == keybind.key) return true;
 	if (keybind.alt) {
 		return key == 18;

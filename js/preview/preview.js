@@ -2204,13 +2204,25 @@ export function initCanvas() {
 	}).addAsBuiltIn(),
 
 	MediaPreview = new Preview({id: 'media', offscreen: true});
-	Screencam.NoAAPreview = new Preview({id: 'no_aa_media', offscreen: true, antialias: false});
+	if (typeof Screencam !== 'undefined') {
+		Screencam.NoAAPreview = new Preview({id: 'no_aa_media', offscreen: true, antialias: false});
+	}
 
 	main_preview = new Preview({id: 'main'}).fullscreen();
 
 	//TransformControls
 	window.Transformer = new THREE.TransformControls(main_preview.camPers, main_preview.canvas);
-	window.SplineGizmos = new THREE.SplineGizmoController(main_preview.camPers, main_preview.canvas);
+	if (Blockbench.queries?.embed === 'skin') {
+		// Skin projects cannot edit splines, but TransformControls still calls this collaborator.
+		let spline_gizmos = new THREE.Object3D();
+		spline_gizmos.spline_handles = [];
+		window.SplineGizmos = new Proxy(spline_gizmos, {get(target, key) {
+			if (key in target) return target[key];
+			return () => false;
+		}});
+	} else {
+		window.SplineGizmos = new THREE.SplineGizmoController(main_preview.camPers, main_preview.canvas);
+	}
 	Transformer.setSize(0.5);
 	scene.add(Transformer);
 	scene.add(SplineGizmos);
@@ -2233,14 +2245,14 @@ export function animate() {
 
 	TickUpdates.Run();
 
-	if (Animator.open) {
+	if (typeof Animator !== 'undefined' && Animator.open) {
 		if (Timeline.playing) {
 			Timeline.loop();
 		} else if (AnimationController.selected) {
 			AnimationController.selected.updatePreview();
 		}
 	}
-	if (Preview.selected) {
+	if (typeof WinterskyScene !== 'undefined' && Preview.selected) {
 		WinterskyScene.updateFacingRotation(Preview.selected.camera);
 	}
 	Preview.all.forEach(function(prev) {
@@ -2249,10 +2261,10 @@ export function animate() {
 		}
 	})
 	framespersecond++;
-	if (Modes.display === true && Canvas.ground_animation === true && !Transformer.hoverAxis && DisplayMode.animate_preview) {
+	if (typeof DisplayMode !== 'undefined' && Modes.display === true && Canvas.ground_animation === true && !Transformer.hoverAxis && DisplayMode.animate_preview) {
 		DisplayMode.groundAnimation()
 	}
-	if (TextureAnimator.isPlaying) {
+	if (typeof TextureAnimator !== 'undefined' && TextureAnimator.isPlaying) {
 		TextureAnimator.playAnimationFrame();
 	}
 	Blockbench.dispatchEvent('render_frame');

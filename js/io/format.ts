@@ -8,7 +8,6 @@ import { Group } from "../outliner/types/group";
 import { Canvas } from "../preview/canvas";
 import { DefaultCameraPresets } from "../preview/preview";
 import { Property } from "../util/property";
-import { SplineMesh } from "../outliner/types/spline_mesh";
 
 export interface FormatPage {
 	component?: Vue.Component
@@ -558,7 +557,7 @@ export class ModelFormat implements FormatOptions {
 		}
 
 		//Splines
-		if (!this.splines && old_format.splines) {
+		if (!this.splines && old_format.splines && typeof SplineMesh !== 'undefined') {
 			SplineMesh.all.slice().forEach(spline => {
 				spline.remove()
 			})

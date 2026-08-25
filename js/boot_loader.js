@@ -2,12 +2,11 @@ import { Blockbench } from "./api";
 import { updateStreamerModeNotification } from "./interface/setup_settings";
 import { loadThemes } from "./interface/themes";
 import { translateUI } from "./languages";
-import { loadInstalledPlugins } from "./plugin_loader";
 import { animate } from "./preview/preview";
 import { ipcRenderer, SystemInfo } from "./native_apis";
 import { initializeDesktopApp, loadOpenWithBlockbenchFile } from "./desktop";
-import { AutoBackup } from "./auto_backup";
 import { initReferenceImages } from "./preview/reference_images";
+import { setupSkinOnlyEmbed } from "./embed/skin_only";
 
 Interface.page_wrapper = document.getElementById('page_wrapper');
 Interface.work_screen = document.getElementById('work_screen');
@@ -16,7 +15,7 @@ Interface.right_bar = document.getElementById('right_bar');
 Interface.left_bar = document.getElementById('left_bar');
 Interface.preview = document.getElementById('preview');
 
-CustomTheme.setup();
+if (!Blockbench.queries?.embed) CustomTheme.setup();
 
 StateMemory.init('dialog_paths', 'object')
 
@@ -56,8 +55,13 @@ BARS.setupActions()
 BARS.setupToolbars()
 BARS.setupVue()
 MenuBar.setup()
+setupSkinOnlyEmbed()
 translateUI()
-loadThemes()
+const embed_language = new URLSearchParams(window.location.search).get('lang')
+if (embed_language) {
+	console.info(`Blockbench embed language: ${embed_language}`, setLanguage(embed_language))
+}
+if (!Blockbench.queries?.embed) loadThemes()
 initReferenceImages()
 
 console.log(`Three.js r${THREE.REVISION}`)
@@ -77,11 +81,11 @@ document.getElementById('blackout').addEventListener('click', event => {
 	}
 })
 
-if (isApp) {
+if (isApp && !Blockbench.queries?.embed) {
 	updateRecentProjects()
 }
 
-if (!isApp) {
+if (!isApp && !Blockbench.queries?.embed) {
 	async function registerSW() {
 		if ('serviceWorker' in navigator) {
 			try {
@@ -94,11 +98,11 @@ if (!isApp) {
 	registerSW();
 }
 
-if (!Blockbench.isWeb || !Blockbench.isPWA) {
+if (!Blockbench.queries?.embed && (!Blockbench.isWeb || !Blockbench.isPWA)) {
 	$.ajaxSetup({ cache: false });
 }
 
-if (Blockbench.startup_count == 1) {
+if (!Blockbench.queries?.embed && Blockbench.startup_count == 1) {
 	try {
 		jQuery.ajax({
 			url: 'https://blckbn.ch/api/event/new_installation',
@@ -109,7 +113,7 @@ if (Blockbench.startup_count == 1) {
 		console.error(err);
 	}
 }
-if (Blockbench.startup_count == 3) {
+if (!Blockbench.queries?.embed && Blockbench.startup_count == 3) {
 	try {
 		jQuery.ajax({
 			url: 'https://blckbn.ch/api/event/recurring_user',
@@ -138,11 +142,11 @@ onVueSetup.funcs.forEach((func) => {
 	}
 })
 
-if (settings.streamer_mode.value) {
+if (!Blockbench.queries?.embed && settings.streamer_mode.value) {
 	updateStreamerModeNotification();
 }
 
-AutoBackup.initialize();
+if (!Blockbench.queries?.embed) AutoBackup.initialize();
 
 if (isApp) {
 	initializeDesktopApp();
@@ -167,11 +171,12 @@ localStorage.setItem('last_version', Blockbench.version);
 		}
 		proceeded = true;
 	}
-	loadInstalledPlugins().then(proceed);
-	setTimeout(proceed, 1200);
+	if (Blockbench.queries?.embed) proceed();
+	else loadInstalledPlugins().then(proceed);
+	if (!Blockbench.queries?.embed) setTimeout(proceed, 1200);
 })()
 
-setStartScreen(true);
+setStartScreen(!Blockbench.queries?.embed);
 
 if (Blockbench.isMobile) {
 	// Reselect tool to update transform toolbar in status bar on mobile

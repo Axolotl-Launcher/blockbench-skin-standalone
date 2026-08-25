@@ -39,13 +39,13 @@ Blockbench.ShapelessDialog = ShapelessDialog;
 Blockbench.ToolConfig = ToolConfig;
 Blockbench.InputForm = InputForm;
 Blockbench.Setting = Setting;
-Blockbench.Plugin = Plugin;
+if (typeof Plugin !== 'undefined') Blockbench.Plugin = Plugin;
 Blockbench.Preview = Preview;
 Blockbench.Toolbar = Toolbar;
 
 Blockbench.Language = Language;
 Blockbench.Painter = Painter;
-Blockbench.Screencam = Screencam;
+if (typeof Screencam !== 'undefined') Blockbench.Screencam = Screencam;
 Blockbench.Settings = Settings;
 Blockbench.TextureAnimator = TextureAnimator;
 Blockbench.Toolbox = Toolbox;

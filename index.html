@@ -21,12 +21,14 @@
 	<link rel="stylesheet" href="css/start_screen.css">
 	<link rel="stylesheet" href="css/panels.css">
 	<link rel="stylesheet" href="css/dialogs.css">
+	<link rel="stylesheet" href="css/skin_only_embed.css">
 	<style type="text/css" id="theme_css"></style>
 	<style type="text/css" id="theme_thumbnail_css"></style>
 </head>
 <body spellcheck="false" class="maximized">
 	<script>
 		if (typeof module === 'object') {window.module = module; module = undefined;}//jQuery Fix
+		window.BlockbenchEmbedLanguage = new URLSearchParams(location.search).get('lang');
 		
 		if (localStorage.getItem('theme')) {
 			try {
@@ -71,7 +73,12 @@
 		<button onclick="window.close()" class="large" style="margin-right: auto; margin-left: auto;">Quit</button>
 		<div id="loading_error_version" style="color: var(--color-subtle_text);"></div>
 	</div>
-	<script type="module" src="dist/bundle.js"></script>
+	<script type="module">
+		const params = new URLSearchParams(location.search);
+		const bundle = params.get('embed') === 'skin' ? 'dist/skin.bundle.js' : 'dist/bundle.js';
+		const bundleRevision = params.get('embed') === 'skin' ? 'skin-2' : 'full-1';
+		window.blockbenchBundleReady = import(`./${bundle}?v=${bundleRevision}&lang=${encodeURIComponent(window.BlockbenchEmbedLanguage || '')}`);
+	</script>
 
 	<div style="display: none;"></div>
 
@@ -83,6 +90,7 @@
 			<img class="blockbench_logo" src="assets/logo_text_white.svg" alt="Blockbench" />
 		</div>
 		<ul id="menu_bar" class="scroll_horizontal"></ul>
+		<div id="skin_only_attribution" hidden>Skin editor from Blockbench, redesigned by Axolotl Lab</div>
 		<div id="title_bar_home_button" class="tool hidden" onclick="Interface.tab_bar.openNewTab()"><i class="material-icons icon">home</i></div>
 		<div class="app-drag-region" id="header_free_bar"></div>
 		<div id="update_menu"></div>
@@ -209,6 +217,13 @@
 			console.error(err);
 			let error_element = document.querySelector('#loading_error_detail')
 			error_element.innerHTML = `Incompatible browser version. Please update your web browser.`;
+		}
+		try {
+			await window.blockbenchBundleReady;
+		} catch (error) {
+			console.error(error);
+			let error_element = document.querySelector('#loading_error_detail');
+			error_element.innerText = error instanceof Error ? error.stack || error.message : String(error);
 		}
 		if (!window.Blockbench?.setup_successful || !browser_check_passed) {
 			document.getElementById('loading_error_message').style.display = 'block'

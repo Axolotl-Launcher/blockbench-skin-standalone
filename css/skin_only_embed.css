@@ -1,0 +1,29 @@
+/* The embedded skin editor keeps Blockbench's native workspace and controls. */
+body.skin_only_embed #corner_logo,
+body.skin_only_embed #header_free_bar,
+body.skin_only_embed #update_menu,
+body.skin_only_embed #settings_profiles_header_menu,
+body.skin_only_embed #web_download_button,
+body.skin_only_embed #new_tab_button,
+body.skin_only_embed #search_tab_button,
+body.skin_only_embed #title_bar_home_button {
+	display: none !important;
+}
+
+body.skin_only_embed #tab_bar {
+	display: none !important;
+}
+
+body.skin_only_embed #skin_only_attribution {
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+	padding: 0 12px;
+	color: var(--color-subtle_text);
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+body.skin_only_embed #work_screen {
+	grid-template-rows: var(--toolbar-height) minmax(200px, 5000px) var(--status-bar-height);
+}

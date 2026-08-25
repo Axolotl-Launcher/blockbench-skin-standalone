@@ -344,7 +344,7 @@ export const Blockbench = {
 				}
 			}
 		}
-		if (Validator.triggers.includes(event_name)) {
+		if (typeof Validator !== 'undefined' && Validator.triggers.includes(event_name)) {
 			Validator.validate(event_name);
 		}
 		return results;
