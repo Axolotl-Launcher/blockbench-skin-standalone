@@ -5,6 +5,78 @@ import { setActivePanel } from '../interface/panels'
 import { setStartScreen } from '../io/project'
 import { onVueSetup } from '../util/util'
 
+const axolotlThemeColors = [
+	'ui',
+	'back',
+	'dark',
+	'border',
+	'selected',
+	'elevated',
+	'button',
+	'bright_ui',
+	'accent',
+	'accent_highlight',
+	'focus_ring',
+	'hover',
+	'frame',
+	'text',
+	'light',
+	'accent_text',
+	'bright_ui_text',
+	'subtle_text',
+	'grid',
+	'wireframe',
+	'checkerboard',
+	'menu_separator',
+	'bright_border',
+] as const
+
+const axolotlThemeMetrics = [
+	'gap-xs',
+	'gap-sm',
+	'gap-md',
+	'gap-lg',
+	'radius-xs',
+	'radius-sm',
+	'radius-md',
+] as const
+
+type AxolotlThemeMessage = {
+	type: 'axolotl-skin-theme'
+	theme: {
+		dark: boolean
+		colors: Record<string, string>
+		metrics: Record<string, string>
+	}
+}
+
+function applyAxolotlTheme(event: MessageEvent<unknown>): void {
+	if (event.source !== window.parent || !event.data || typeof event.data !== 'object') return
+	const message = event.data as Partial<AxolotlThemeMessage>
+	if (
+		message.type !== 'axolotl-skin-theme' ||
+		!message.theme ||
+		typeof message.theme.dark !== 'boolean' ||
+		!message.theme.colors ||
+		!message.theme.metrics
+	)
+		return
+
+	for (const color of axolotlThemeColors) {
+		const value = message.theme.colors[color]
+		if (typeof value === 'string' && value)
+			document.body.style.setProperty(`--color-${color}`, value)
+	}
+	for (const metric of axolotlThemeMetrics) {
+		const value = message.theme.metrics[metric]
+		if (typeof value === 'string' && value)
+			document.body.style.setProperty(`--axolotl-${metric}`, value)
+	}
+	document.body.classList.toggle('axolotl_dark_theme', message.theme.dark)
+	document.body.classList.toggle('axolotl_light_theme', !message.theme.dark)
+	document.documentElement.style.colorScheme = message.theme.dark ? 'dark' : 'light'
+}
+
 /**
  * Restricts the existing Blockbench workbench to Minecraft player skin work.
  * The painter, UV editor, preview, and undo stack remain Blockbench's native
@@ -18,6 +90,7 @@ export function setupSkinOnlyEmbed(): void {
 	if (!isSkinOnlyEmbed()) return
 
 	document.body.classList.add('skin_only_embed')
+	window.addEventListener('message', applyAxolotlTheme)
 	document.getElementById('skin_only_attribution').hidden = false
 	for (const id of Object.keys(MenuBar.menus)) {
 		MenuBar.menus[id].delete()
@@ -56,7 +129,7 @@ export function setupSkinOnlyEmbed(): void {
 	MenuBar.update()
 	const onConfirm = format.setup_dialog.onConfirm
 	let unlockInitialDialog: (() => void) | undefined
-	format.setup_dialog.onConfirm = function(...args) {
+	format.setup_dialog.onConfirm = function (...args) {
 		const result = onConfirm.apply(this, args)
 		if (result !== false) {
 			unlockInitialDialog?.()
@@ -86,7 +159,7 @@ export function setupSkinOnlyEmbed(): void {
 		})
 	}
 
-	Blockbench.skinOnlyEmbed = {openRequiredInitialDialog}
+	Blockbench.skinOnlyEmbed = { openRequiredInitialDialog }
 }
 
 onVueSetup(() => {
@@ -95,5 +168,6 @@ onVueSetup(() => {
 	window.requestAnimationFrame(() => {
 		resizeWindow()
 		Blockbench.skinOnlyEmbed.openRequiredInitialDialog()
+		window.parent.postMessage({ type: 'axolotl-skin-theme-ready' }, '*')
 	})
 })
