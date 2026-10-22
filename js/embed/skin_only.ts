@@ -106,7 +106,7 @@ export function setupSkinOnlyEmbed(): void {
 		new MenuSeparator('export'),
 		'export_minecraft_skin',
 	])
-	new BarMenu('edit', ['undo', 'redo'])
+    new BarMenu('edit', ['undo', 'redo', new MenuSeparator('clipboard'), 'cut', 'copy', 'paste'])
 	new BarMenu('skin', [
 		'custom_skin_poses',
 		'add_custom_skin_pose',

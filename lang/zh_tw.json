@@ -1,4 +1,8 @@
 {
+    "message.clipboard.internal": "系統剪貼簿無法使用，複製的圖像仍可在此編輯器內貼上。",
+    "message.clipboard.copy_failed": "無法複製圖像，選取範圍已保留，請重試。",
+    "message.clipboard.paste_failed": "無法讀取剪貼簿圖像，請重新複製，或允許存取剪貼簿後重試。",
+    "message.clipboard.no_image": "剪貼簿中沒有 PNG 圖像，請複製圖像後重試。",
 	"dialog.ok": "確定",
 	"dialog.cancel": "取消",
 	"dialog.confirm": "確認",

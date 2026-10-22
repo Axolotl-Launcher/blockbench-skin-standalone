@@ -1,6 +1,14 @@
 import { PointerTarget } from "../interface/pointer_target";
+import { data as languages, tl } from "../languages";
 import { clipboard, nativeImage } from "../native_apis";
 import { Dynamic2DMap } from "../util/dynamic_2d_map";
+import { ImageClipboard } from "./image_clipboard";
+
+const imageClipboard = new ImageClipboard();
+
+function showClipboardMessage(key) {
+    Blockbench.showQuickMessage(tl(key, undefined, languages.en[key]), 5000);
+}
 
 StateMemory.init('brush_presets', 'array')
 
@@ -2341,19 +2349,22 @@ SharedActions.add('copy', {
 		}
 
 
-		if (isApp) {
-			let img = nativeImage.createFromDataURL(Clipbench.image.data);
-			clipboard.writeImage(img);
-		} else {
-			canvas.toBlob(blob => {
-				navigator.clipboard.write([
-					new ClipboardItem({
-						[blob.type]: blob,
-					}),
-				]);
-			});
-		}
+        try {
+            if (isApp) {
+                let img = nativeImage.createFromDataURL(Clipbench.image.data);
+                clipboard.writeImage(img);
+            } else {
+                imageClipboard.write(Clipbench.image).then(system => {
+                    if (!system) showClipboardMessage('message.clipboard.internal');
+                });
+            }
+        } catch (error) {
+            console.error('Failed to copy texture selection', error);
+            showClipboardMessage('message.clipboard.copy_failed');
+            return;
+        }
 
+        // The web clipboard has already saved an independent local copy before deleting pixels.
 		if (cut) {
 			SharedActions.runSpecific('delete', 'image_content', event, {message: 'Cut texture selection'});
 		}
@@ -2362,26 +2373,42 @@ SharedActions.add('copy', {
 SharedActions.add('paste', {
 	subject: 'image_content',
 	condition: () => Prop.active_panel == 'uv' && Modes.paint && UVEditor.texture,
-	run(event) {
+    async run(event) {
 		let texture = UVEditor.texture;
+        const project = Project;
 
-		async function loadFromDataUrl(data_url) {
+        async function loadFromDataUrl(data_url, copied_image) {
 			let frame = new CanvasFrame();
 			await frame.loadFromURL(data_url);
+            if (copied_image && copied_image.data !== data_url) {
+                // System clipboards can re-encode PNGs without changing their pixels.
+                const copied_frame = new CanvasFrame();
+                await copied_frame.loadFromURL(copied_image.data);
+                if (frame.width !== copied_frame.width || frame.height !== copied_frame.height) {
+                    copied_image = undefined;
+                } else {
+                    const pixels = frame.ctx.getImageData(0, 0, frame.width, frame.height).data;
+                    const copied_pixels = copied_frame.ctx.getImageData(0, 0, frame.width, frame.height).data;
+                    if (pixels.some((value, index) => value !== copied_pixels[index])) copied_image = undefined;
+                }
+            }
+            if (Project !== project || UVEditor.texture !== texture) return;
 
+            // Skin projects can display their default texture without selecting it.
+            texture.select();
 			Undo.initEdit({textures: [texture], bitmap: true});
 			if (!texture.layers_enabled) {
 				texture.flags.add('temporary_layers');
 				texture.activateLayers(false);
 			}
 			let offset;
-			if (Clipbench.image) {
-				offset = [Math.clamp(Clipbench.image.x, 0, texture.width), Math.clamp(Clipbench.image.y, 0, texture.height)];
+            if (copied_image) {
+                offset = [Math.clamp(copied_image.x, 0, texture.width), Math.clamp(copied_image.y, 0, texture.height)];
 				offset[0] = Math.clamp(offset[0], 0, texture.width-frame.width);
 				offset[1] = Math.clamp(offset[1], 0, texture.height-frame.height);
 			}
-			let old_frame = Clipbench.image?.frame || 0;
-			if (old_frame || texture.currentFrame) {
+            let old_frame = copied_image?.frame || 0;
+            if (offset && (old_frame || texture.currentFrame)) {
 				offset[1] += texture.display_height * ((texture.currentFrame||0) - old_frame);
 			}
 			let layer = new TextureLayer({name: 'pasted', offset}, texture);
@@ -2401,19 +2428,21 @@ SharedActions.add('paste', {
 		}
 		
 	
-		if (isApp) {
-			var image = clipboard.readImage().toDataURL();
-			loadFromDataUrl(image);
-		} else {
-			navigator.clipboard.read().then(content => {
-				if (content && content[0] && content[0].types.includes('image/png')) {
-					content[0].getType('image/png').then(blob => {
-						let url = URL.createObjectURL(blob);
-						loadFromDataUrl(url);
-					})
-				}
-			}).catch(() => {})
-		}
+        try {
+            if (isApp) {
+                await loadFromDataUrl(clipboard.readImage().toDataURL(), Clipbench.image);
+            } else {
+                const copied = await imageClipboard.read();
+                if (!copied) {
+                    showClipboardMessage('message.clipboard.no_image');
+                    return;
+                }
+                await loadFromDataUrl(copied.data, copied.image);
+            }
+        } catch (error) {
+            console.error('Failed to paste texture selection', error);
+            showClipboardMessage('message.clipboard.paste_failed');
+        }
 		
 	}
 })

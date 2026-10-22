@@ -131,6 +131,7 @@
 		]
 	},
 	"scripts": {
+        "test": "node --test tests/*.test.js",
 		"dev": "concurrently --raw \"electron --remote-debugging-port=9223 .\" \"node ./build.js --target=electron --watch\" --kill-others --success=first",
 		"serve": "node ./build.js --target=web --serve",
 		"electron": "electron .",

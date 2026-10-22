@@ -17,6 +17,10 @@
 	"dialog.copy_to_clipboard": "Copy to clipboard",
 	"dialog.open_url": "Open URL",
 	"dialog.copied_to_clipboard": "Copied to clipboard",
+    "message.clipboard.internal": "System clipboard unavailable. You can paste the copied image within this editor.",
+    "message.clipboard.copy_failed": "Could not copy the image. Your selection has been kept. Try again.",
+    "message.clipboard.paste_failed": "Could not read an image from the clipboard. Copy it again or allow clipboard access and retry.",
+    "message.clipboard.no_image": "The clipboard does not contain a PNG image. Copy an image and try again.",
 	"dialog.advanced": "Advanced",
 	"dialog.recommended_option": "recommended",
 

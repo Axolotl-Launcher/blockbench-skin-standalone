@@ -1,4 +1,8 @@
 {
+    "message.clipboard.internal": "系统剪贴板不可用，复制的图像仍可在此编辑器内粘贴。",
+    "message.clipboard.copy_failed": "无法复制图像，选区已保留，请重试。",
+    "message.clipboard.paste_failed": "无法读取剪贴板图像，请重新复制，或允许访问剪贴板后重试。",
+    "message.clipboard.no_image": "剪贴板中没有 PNG 图像，请复制图像后重试。",
 	"dialog.ok": "确定",
 	"dialog.cancel": "取消",
 	"dialog.confirm": "确认",
