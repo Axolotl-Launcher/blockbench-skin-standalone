@@ -203,6 +203,10 @@ export const AutoBackup = {
 		})
 	},
 	async removeBackup(uuid: string) {
+		if (!AutoBackup.db) {
+			if (Blockbench.queries?.embed) return;
+			throw new Error('Auto backup database is not ready');
+		}
 		let transaction = AutoBackup.db.transaction('projects', 'readwrite');
 		let store = transaction.objectStore('projects');
 		let request = store.delete(uuid);
@@ -215,6 +219,10 @@ export const AutoBackup = {
 		});
 	},
 	async removeAllBackups() {
+		if (!AutoBackup.db) {
+			if (Blockbench.queries?.embed) return;
+			throw new Error('Auto backup database is not ready');
+		}
 		let transaction = AutoBackup.db.transaction('projects', 'readwrite');
 		let store = transaction.objectStore('projects');
 		let request = store.clear();
