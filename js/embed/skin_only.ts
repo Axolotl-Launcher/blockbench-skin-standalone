@@ -1,4 +1,5 @@
 import { format } from '../formats/minecraft/skin'
+import { Dialog } from '../interface/dialog'
 import { BarMenu, MenuBar } from '../interface/menu_bar'
 import { resizeWindow } from '../interface/interface'
 import { setActivePanel } from '../interface/panels'
@@ -63,12 +64,34 @@ type AxolotlThemeMessage = {
 	}
 }
 
+type SkinEditorDialogLabels = {
+	settingsLabel: string
+	settingsTitle: string
+	autoSave: string
+	autoSaveDescription: string
+	interval: string
+	intervalDescription: string
+	warnBeforeLeave: string
+	warnBeforeLeaveDescription: string
+	recoveryTitle: string
+	recoveryBody: string
+	recoveryStartNew: string
+	recoveryContinue: string
+	unsavedTitle: string
+	unsavedBody: string
+	unsavedStay: string
+	unsavedDiscard: string
+	unsavedSave: string
+}
+
 type ParentCommand =
 	| {
 			type: 'axolotl-skin-config'
 			autoSaveEnabled: boolean
 			autoSaveIntervalSeconds: number
+			warnBeforeLeave: boolean
 	  }
+	| ({type: 'axolotl-skin-labels'} & SkinEditorDialogLabels)
 	| {
 			type: 'axolotl-skin-command'
 			requestId: string
@@ -85,9 +108,14 @@ type ParentCommand =
 			requestId: string
 			accepted: boolean
 	  }
+	| {
+			type: 'axolotl-skin-prompt-unsaved'
+			requestId: string
+	  }
 
 let autoSaveEnabled = true
 let autoSaveIntervalSeconds = 30
+let warnBeforeLeave = true
 let autoSaveTimer: ReturnType<typeof setTimeout> | undefined
 let autoSavePromise: Promise<boolean> | undefined
 let autoSaveSuspended = false
@@ -98,12 +126,49 @@ let currentRecovery: SkinEditorDraft | undefined
 let requestCounter = 0
 const pendingExports = new Map<string, (saved: boolean) => void>()
 const pendingExportAccepts = new Map<string, (accepted: boolean) => void>()
+let fileNameElement: HTMLElement | null = null
+let exportInProgress = false
+let recoveryPromptPending = false
+let recoveryPromptShown = false
+let unsavedPromptOpen = false
+
+const dialogLabels: SkinEditorDialogLabels = {
+	settingsLabel: 'Skin editor settings',
+	settingsTitle: 'Editor settings',
+	autoSave: 'Automatically save a recovery draft',
+	autoSaveDescription:
+		'Recovery drafts stay on this device and are separate from exported PNG files.',
+	interval: 'Save interval (seconds)',
+	intervalDescription: 'Use a value between 5 and 600 seconds.',
+	warnBeforeLeave: 'Warn before leaving with unsaved changes',
+	warnBeforeLeaveDescription:
+		'When auto-save is off, this warning is always enabled to protect your work.',
+	recoveryTitle: 'Continue last skin?',
+	recoveryBody: 'A recovery draft was saved on this device.',
+	recoveryStartNew: 'Start new',
+	recoveryContinue: 'Continue',
+	unsavedTitle: 'Unsaved skin',
+	unsavedBody: 'Save your skin before leaving, or discard the current changes.',
+	unsavedStay: 'Stay',
+	unsavedDiscard: 'Discard',
+	unsavedSave: 'Save PNG',
+}
+
+const skinEditorSettingsItem = {
+	id: 'axolotl_skin_settings',
+	name: dialogLabels.settingsLabel,
+	icon: 'settings',
+	click() {
+		openSettingsDialog()
+	},
+}
 
 function postToParent(message: object): void {
 	window.parent.postMessage(message, '*')
 }
 
 function publishState(autoSave: 'idle' | 'saving' | 'saved' | 'error' = 'idle'): void {
+	updateFileNameLabel()
 	postToParent({
 		type: 'axolotl-skin-state',
 		dirty,
@@ -175,12 +240,14 @@ async function requestExport(
 	reason: 'manual' | 'leave',
 	requestId = nextRequestId(),
 ): Promise<boolean> {
+	if (exportInProgress) return false
 	const texture = Texture.all[0]
 	if (!texture) {
 		Blockbench.showQuickMessage('No skin texture is available to save.', 3000)
 		return false
 	}
 
+	exportInProgress = true
 	clearAutoSaveTimer()
 	if (autoSavePromise) await autoSavePromise
 	autoSaveSuspended = true
@@ -251,9 +318,152 @@ async function requestExport(
 		Blockbench.showQuickMessage('The skin could not be prepared for saving.', 4000)
 		return false
 	} finally {
+		exportInProgress = false
 		autoSaveSuspended = false
 		if (dirty) armAutoSaveTimer()
 	}
+}
+
+function currentFileName(): string {
+	const texture = Texture.all[0]
+	if (!texture?.name) return ''
+	return texture.name.toLowerCase().endsWith('.png') ? texture.name : `${texture.name}.png`
+}
+
+function updateFileNameLabel(): void {
+	if (!fileNameElement) return
+	const name = currentFileName()
+	fileNameElement.textContent = name ? `${name}${dirty ? '*' : ''}` : ''
+	fileNameElement.hidden = !name
+}
+
+function applyLabels(message: Partial<SkinEditorDialogLabels>): void {
+	for (const key of Object.keys(dialogLabels) as (keyof SkinEditorDialogLabels)[]) {
+		const value = message[key]
+		if (typeof value === 'string' && value) dialogLabels[key] = value
+	}
+	skinEditorSettingsItem.name = dialogLabels.settingsLabel
+	if (recoveryPromptPending) {
+		recoveryPromptPending = false
+		openRecoveryDialog()
+	}
+}
+
+function setupSkinOnlyFileName(): void {
+	fileNameElement = document.getElementById('axolotl_skin_file_name')
+	updateFileNameLabel()
+}
+
+function openSettingsDialog(): void {
+	new Dialog({
+		id: 'axolotl_skin_settings',
+		title: dialogLabels.settingsTitle,
+		width: 560,
+		form: {
+			autoSaveEnabled: {
+				type: 'checkbox',
+				style: 'toggle_switch',
+				label: dialogLabels.autoSave,
+				description: dialogLabels.autoSaveDescription,
+				value: autoSaveEnabled,
+			},
+			autoSaveIntervalSeconds: {
+				type: 'number',
+				label: dialogLabels.interval,
+				description: dialogLabels.intervalDescription,
+				value: autoSaveIntervalSeconds,
+				min: 5,
+				max: 600,
+				step: 5,
+			},
+			warnBeforeLeave: {
+				type: 'checkbox',
+				style: 'toggle_switch',
+				label: dialogLabels.warnBeforeLeave,
+				description: dialogLabels.warnBeforeLeaveDescription,
+				value: warnBeforeLeave || !autoSaveEnabled,
+			},
+		},
+		onConfirm(result) {
+			autoSaveEnabled = result.autoSaveEnabled === true
+			autoSaveIntervalSeconds = clampInterval(Number(result.autoSaveIntervalSeconds))
+			warnBeforeLeave = autoSaveEnabled ? result.warnBeforeLeave === true : true
+			if (autoSaveEnabled) armAutoSaveTimer()
+			else clearAutoSaveTimer()
+			postToParent({
+				type: 'axolotl-skin-settings-change',
+				autoSaveEnabled,
+				autoSaveIntervalSeconds,
+				warnBeforeLeave,
+			})
+		},
+	}).show()
+}
+
+function openRecoveryDialog(): void {
+	if (!currentRecovery || recoveryPromptShown) return
+	recoveryPromptShown = true
+	let body = dialogLabels.recoveryBody
+	if (!body) {
+		try {
+			body = `A recovery draft was saved on ${new Date(currentRecovery.updatedAt).toLocaleString()}.`
+		} catch {
+			body = 'A recovery draft was saved on this device.'
+		}
+	}
+	new Dialog({
+		id: 'axolotl_skin_recovery',
+		title: dialogLabels.recoveryTitle,
+		width: 480,
+		lines: [body],
+		buttons: [dialogLabels.recoveryStartNew, dialogLabels.recoveryContinue],
+		confirmIndex: 1,
+		cancelIndex: 2,
+		cancel_on_click_outside: false,
+		onBuild(object) {
+			object.querySelector('.dialog_close_button')?.remove()
+		},
+		onCancel() {
+			return false
+		},
+		onButton(button) {
+			window.setTimeout(() => {
+				if (button === 1) void restoreDraft()
+				else void startNewSkin()
+			}, 0)
+		},
+	}).show()
+}
+
+function openUnsavedPrompt(requestId: string): void {
+	if (unsavedPromptOpen) {
+		postToParent({type: 'axolotl-skin-prompt-result', requestId, choice: 'stay'})
+		return
+	}
+	unsavedPromptOpen = true
+	new Dialog({
+		id: 'axolotl_skin_unsaved',
+		title: dialogLabels.unsavedTitle,
+		width: 480,
+		lines: [dialogLabels.unsavedBody],
+		buttons: [dialogLabels.unsavedStay, dialogLabels.unsavedDiscard, dialogLabels.unsavedSave],
+		confirmIndex: 2,
+		cancelIndex: 3,
+		cancel_on_click_outside: false,
+		onBuild(object) {
+			object.querySelector('.dialog_close_button')?.remove()
+		},
+		onCancel() {
+			return false
+		},
+		onButton(button) {
+			const choice = button === 2 ? 'save' : button === 1 ? 'discard' : 'stay'
+			window.setTimeout(() => {
+				unsavedPromptOpen = false
+				postToParent({type: 'axolotl-skin-prompt-result', requestId, choice})
+			}, 0)
+		},
+	}).show()
 }
 
 async function startNewSkin(): Promise<void> {
@@ -361,8 +571,24 @@ function handleAxolotlMessage(event: MessageEvent<unknown>): void {
 	if (message.type === 'axolotl-skin-config') {
 		autoSaveEnabled = message.autoSaveEnabled === true
 		autoSaveIntervalSeconds = clampInterval(message.autoSaveIntervalSeconds)
+		if (typeof message.warnBeforeLeave === 'boolean') {
+			warnBeforeLeave = message.warnBeforeLeave
+		}
 		if (autoSaveEnabled) armAutoSaveTimer()
 		else clearAutoSaveTimer()
+		return
+	}
+
+	if (message.type === 'axolotl-skin-labels') {
+		applyLabels(message)
+		return
+	}
+
+	if (
+		message.type === 'axolotl-skin-prompt-unsaved' &&
+		typeof message.requestId === 'string'
+	) {
+		openUnsavedPrompt(message.requestId)
 		return
 	}
 
@@ -454,6 +680,7 @@ export function setupSkinOnlyEmbed(): void {
 	window.addEventListener('message', applyAxolotlTheme)
 	window.addEventListener('message', handleAxolotlMessage)
 	document.getElementById('skin_only_attribution').hidden = false
+	setupSkinOnlyFileName()
 	for (const id of Object.keys(MenuBar.menus)) {
 		MenuBar.menus[id].delete()
 	}
@@ -468,7 +695,16 @@ export function setupSkinOnlyEmbed(): void {
 		new MenuSeparator('export'),
 		'export_minecraft_skin',
 	])
-	new BarMenu('edit', ['undo', 'redo', new MenuSeparator('clipboard'), 'cut', 'copy', 'paste'])
+	new BarMenu('edit', [
+		'undo',
+		'redo',
+		new MenuSeparator('clipboard'),
+		'cut',
+		'copy',
+		'paste',
+		new MenuSeparator('axolotl'),
+		skinEditorSettingsItem,
+	])
 	new BarMenu('skin', [
 		'custom_skin_poses',
 		'add_custom_skin_pose',
@@ -511,6 +747,8 @@ export function setupSkinOnlyEmbed(): void {
 	Blockbench.on('saved_state_changed', event => {
 		if (event.project === Project) setDirty(!event.saved)
 	})
+	Blockbench.on('select_project', updateFileNameLabel)
+	Blockbench.on('new_project', updateFileNameLabel)
 
 	Blockbench.skinOnlyEmbed = {
 		openRequiredInitialDialog,
@@ -542,6 +780,15 @@ onVueSetup(() => {
 					}
 				: {}),
 		})
-		if (!currentRecovery) openRequiredInitialDialog()
+		if (currentRecovery) {
+			recoveryPromptPending = true
+			window.setTimeout(() => {
+				if (!recoveryPromptPending) return
+				recoveryPromptPending = false
+				openRecoveryDialog()
+			}, 1500)
+		} else {
+			openRequiredInitialDialog()
+		}
 	})
 })
